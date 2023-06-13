@@ -52,7 +52,7 @@ downloadNAIP <- function(point, output) {
         dsn2 <- gsub("__int8", "", dsn1)
 
         ee_as_rast(
-            image = ee_img$uint8(),
+            image = ee_img,
             region = roi$geometry(),
             scale = 1,
             via = "getDownloadURL",
