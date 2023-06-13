@@ -1,5 +1,6 @@
 library(lubridate)
 library(dplyr)
+library(terra)
 
 downloadNAIP <- function(point, output) {
     # From sf to ee
@@ -16,7 +17,6 @@ downloadNAIP <- function(point, output) {
 
     # Find the images to download
     to_download <- find_images(hr_metadata)
-    to_download <- c(20, 22)
     hr_download <- hr_metadata[to_download,]
 
     if(sum(to_download) == 0) {
@@ -48,21 +48,32 @@ downloadNAIP <- function(point, output) {
         dir.create(roi_folder, recursive = TRUE, showWarnings = FALSE)
 
         # Start the download
+        dsn1 <- sprintf("%s/%s__int8.tif", roi_folder, basename(ee_img_id))
+        dsn2 <- gsub("__int8", "", dsn1)
+
         ee_as_rast(
             image = ee_img$uint8(),
             region = roi$geometry(),
             scale = 1,
             via = "getDownloadURL",
-            dsn = sprintf("%s/%s.tif", roi_folder, basename(ee_img_id)),
+            dsn = dsn1,
             crs = CRSS2
         )
 
         # clear tmp folder
-        unlink("tmp", recursive = TRUE)
+        unlink(paste0(normalizePath(tempdir()), "/", dir(tempdir())), recursive = TRUE)
+
+        # From float32 to int8
+        writeRaster(
+            terra::rast(dsn1),
+            dsn2,
+            overwrite = TRUE,
+            datatype = "INT1U",
+            gdal=c("COMPRESS=LZW", "TILED=YES", "BIGTIFF=YES")
+        )
+        unlink(dsn1)
     }
 }
-
-
 
 
 find_images <- function(hr_metadata) {
@@ -86,4 +97,3 @@ find_images <- function(hr_metadata) {
     high_idx <- which.max(dist)
     c(idx, high_idx)
 }
-

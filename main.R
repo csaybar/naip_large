@@ -13,9 +13,10 @@ ee_Initialize()
 
 dataset <- read_sf("data/ROI.geojson")
 
-
 for (index in 1:5000) {
     print(index)
-    downloadNAIP(dataset[index,], output="/media/csaybar/0790BB3D255A0B7F/NAIPLARGE2/")
+    downloadNAIP(
+        point = dataset[index,], 
+        output="/media/csaybar/0790BB3D255A0B7F/NAIPLARGE2/"
+    )
 }
-
