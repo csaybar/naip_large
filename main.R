@@ -7,6 +7,8 @@ library(terra)
 library(rgee)
 library(sf)
 
+source("utils.R")
+
 ee_Initialize()
 
 dataset <- read_sf("data/ROI.geojson")
@@ -14,6 +16,6 @@ dataset <- read_sf("data/ROI.geojson")
 
 for (index in 1:5000) {
     print(index)
-    downloadNAIP(point[index,], output="/media/csaybar/0790BB3D255A0B7F/NAIPLARGE2/")
+    downloadNAIP(dataset[index,], output="/media/csaybar/0790BB3D255A0B7F/NAIPLARGE2/")
 }
 

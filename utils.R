@@ -14,17 +14,25 @@ downloadNAIP <- function(point, output) {
     # Get the dates
     hr_metadata <- ee_get_date_ic(hr_img)
 
-    # Find the images to download    
+    # Find the images to download
     to_download <- find_images(hr_metadata)
+    to_download <- c(20, 22)
     hr_download <- hr_metadata[to_download,]
 
     if(sum(to_download) == 0) {
         return(0)
     } 
     
+    # Create a tentative mask 
+    ee_mask1 <- sapply(
+        X = hr_download$id, 
+        FUN = function(x) ee$Image(x)$unmask(0, sameFootprint = FALSE)$reduce("mean") == 0
+    )
+    ee_mask2 <- (ee_mask1[[1]] + ee_mask1[[2]])$eq(0)
+    
     for (index in 1:2) {
         ee_img_id <- hr_download[index,]$id
-        ee_img <- ee$Image(ee_img_id)
+        ee_img <- ee$Image(ee_img_id)$unmask(0, sameFootprint = FALSE)*ee_mask2
 
         # Obtain the CRS - Intersect the geometry with the UTM grid 
         ee_img_ref <- ee$ImageCollection("COPERNICUS/S2")$filterBounds(ee_point)$first()
@@ -34,22 +42,26 @@ downloadNAIP <- function(point, output) {
         roi <- st_transform(point, CRSS2) %>%
             st_buffer(1280, endCapStyle = "SQUARE") %>%
             sf_as_ee(proj = CRSS2)
-        
+
         # Create the folder
         roi_folder <- sprintf("%s/%s/", output, roi_id)
         dir.create(roi_folder, recursive = TRUE, showWarnings = FALSE)
 
         # Start the download
         ee_as_rast(
-            image = ee_img,
+            image = ee_img$uint8(),
             region = roi$geometry(),
             scale = 1,
             via = "getDownloadURL",
             dsn = sprintf("%s/%s.tif", roi_folder, basename(ee_img_id)),
             crs = CRSS2
         )
+
+        # clear tmp folder
+        unlink("tmp", recursive = TRUE)
     }
 }
+
 
 
 
@@ -62,7 +74,7 @@ find_images <- function(hr_metadata) {
     idx <- sample(nrow(hr_metadata), 1)
     sample <- hr_metadata[idx,]
     years1 <- year(hr_metadata$time_start)
-    years_diff <- abs(years1 - years1[idx]) * 5
+    years_diff <- abs(years1 - years1[idx]) * 6
 
     months1 <- month(hr_metadata$time_start)
     months_diff <- abs(months1 - months1[idx]) * 3
